@@ -1,0 +1,72 @@
+// Prisma schema for Allo Inventory Reservation System
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Product {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  sku         String   @unique
+  price       Float
+  imageUrl    String?
+  category    String   @default("General")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  stocks      Stock[]
+}
+
+model Warehouse {
+  id        String   @id @default(cuid())
+  name      String
+  location  String
+  code      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  stocks    Stock[]
+}
+
+model Stock {
+  id            String        @id @default(cuid())
+  productId     String
+  warehouseId   String
+  totalUnits    Int
+  reservedUnits Int           @default(0)
+  product       Product       @relation(fields: [productId], references: [id], onDelete: Cascade)
+  warehouse     Warehouse     @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
+  reservations  Reservation[]
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  @@unique([productId, warehouseId])
+  @@index([productId])
+  @@index([warehouseId])
+}
+
+model Reservation {
+  id             String            @id @default(cuid())
+  stockId        String
+  quantity       Int
+  status         ReservationStatus @default(PENDING)
+  expiresAt      DateTime
+  idempotencyKey String?           @unique
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+  stock          Stock             @relation(fields: [stockId], references: [id], onDelete: Cascade)
+
+  @@index([status, expiresAt])
+  @@index([idempotencyKey])
+}
+
+enum ReservationStatus {
+  PENDING
+  CONFIRMED
+  RELEASED
+  EXPIRED
+}
